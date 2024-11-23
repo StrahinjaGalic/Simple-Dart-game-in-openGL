@@ -107,7 +107,7 @@ void Crosshair::update(float dt) {
     float targetY = y + ((rand() % 3) - 1) * shakeAmount;
 
     // Apply damping for smoother transitions
-    float damping = 0.95f;  // Adjust between 0.0 (instant) and 1.0 (no movement)
+    float damping = 1.0f;  // Adjust between 0.0 (instant) and 1.0 (no movement)
     x = x * damping + targetX * (1.0f - damping);
     y = y * damping + targetY * (1.0f - damping);
 

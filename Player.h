@@ -8,7 +8,6 @@ private:
     std::string name;
     int score;
     int dartsLeft;
-
 public:
     Player(std::string name = "Player");
     void resetDarts();          // Reset darts at the start of a round
@@ -17,6 +16,7 @@ public:
     int getScore() const;       // Get player's current score
     int getDartsLeft() const;   // Get darts remaining
     std::string getName() const; // Get player name
+
 };
 
 #endif

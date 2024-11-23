@@ -9,7 +9,9 @@
 #include "Background.h"
 
 void processInput(GLFWwindow* window);
-void updateGame(float deltaTime);
+void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard);
+void processThrow(Player& currentPlayer, Dartboard& dartboard);
+void checkOpenGLError(const char* description);
 
 // Game objects
 Player player1("Player 1");
@@ -18,6 +20,7 @@ Crosshair crosshair;
 
 int currentPlayer = 0;  // 0 for player1, 1 for player2
 float lastTime = 0.0f;
+bool throwProcessed = false; //so multiple frames cant register click
 
 int main() {
     if (!glfwInit()) {
@@ -71,16 +74,18 @@ int main() {
 
         // Process input
         processInput(window);
-
-        // Update game state (e.g., crosshair shaking, player actions)
-        updateGame(deltaTime);
+        updateGame(deltaTime, window, dartboard);
 
         glClear(GL_COLOR_BUFFER_BIT);
 
         background.render();
+        checkOpenGLError("Background rendering");
+
         dartboard.render();
+        checkOpenGLError("Dartboard rendering");
+
         crosshair.render();
-        
+        checkOpenGLError("Crosshair rendering");
 
         // Check for OpenGL errors
         GLenum err;
@@ -117,14 +122,18 @@ void processInput(GLFWwindow* window) {
     }
 }
 
-void updateGame(float deltaTime) {
+void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !throwProcessed) {
+        Player& current = (currentPlayer == 0) ? player1 : player2;
+        processThrow(current, dartboard);
+        throwProcessed = true; // Mark throw as processed
+    }
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+        throwProcessed = false; // Reset when the button is released
+    }
+
     // Update crosshair shaking
     crosshair.update(deltaTime);
-
-    // Example: update game logic like player actions, scores, etc.
-    // For now, just print the current player and their darts left.
-    Player* current = (currentPlayer == 0) ? &player1 : &player2;
-    std::cout << current->getName() << " - Darts Left: " << current->getDartsLeft() << std::endl;
 }
 
 // Toggle function
@@ -136,3 +145,57 @@ void toggleCursor(GLFWwindow* window, bool visible) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
 }
+
+void processThrow(Player& currentPlayer, Dartboard& dartboard) {
+    float hitX = crosshair.getX();
+    float hitY = crosshair.getY();
+
+    int points = dartboard.calculateScore(hitX, hitY);
+
+    // Record the hit position
+    dartboard.recordHit(hitX, hitY);
+
+    std::cout << currentPlayer.getName() << " hit (" << hitX << ", " << hitY
+        << ") and scored " << points << " points!\n";
+    std::cout << "Total Score: " << currentPlayer.getScore() + points << std::endl;
+
+    currentPlayer.addScore(points);
+    currentPlayer.throwDart();
+}
+
+void checkOpenGLError(const char* description) {
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        std::string error;
+        switch (err) {
+        case GL_INVALID_ENUM:
+            error = "GL_INVALID_ENUM";
+            break;
+        case GL_INVALID_VALUE:
+            error = "GL_INVALID_VALUE";
+            break;
+        case GL_INVALID_OPERATION:
+            error = "GL_INVALID_OPERATION";
+            break;
+        case GL_STACK_OVERFLOW:
+            error = "GL_STACK_OVERFLOW";
+            break;
+        case GL_STACK_UNDERFLOW:
+            error = "GL_STACK_UNDERFLOW";
+            break;
+        case GL_OUT_OF_MEMORY:
+            error = "GL_OUT_OF_MEMORY";
+            break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            error = "GL_INVALID_FRAMEBUFFER_OPERATION";
+            break;
+        default:
+            error = "Unknown error";
+            break;
+        }
+        std::cout << "OpenGL Error (" << error << "): " << description << std::endl;
+    }
+}
+
+
+

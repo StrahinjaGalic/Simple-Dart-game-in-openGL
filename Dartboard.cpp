@@ -7,6 +7,7 @@
 
 // Constants
 const float Dartboard::RADIUS = 0.5f;
+#define M_PI 3.14159265358979323846
 
 Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, const char* fragmentShaderPath) {
     generateCircleVertices(); // Generate circle vertices
@@ -35,6 +36,9 @@ Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, cons
 
     // Load and compile shaders
     shaderProgram = createShader(vertexShaderPath, fragmentShaderPath);
+
+    // Initialize marker resources
+    setupMarker();
 }
 
 Dartboard::~Dartboard() {
@@ -42,6 +46,9 @@ Dartboard::~Dartboard() {
     glDeleteBuffers(1, &VBO);
     glDeleteVertexArrays(1, &VAO);
     glDeleteProgram(shaderProgram);
+    glDeleteBuffers(1, &markerVBO);
+    glDeleteVertexArrays(1, &markerVAO);
+    glDeleteProgram(markerShaderProgram);
 }
 
 void Dartboard::generateCircleVertices() {
@@ -56,7 +63,7 @@ void Dartboard::generateCircleVertices() {
         float x = RADIUS * cos(angle);
         float y = RADIUS * sin(angle);
         float s = 0.5f + 0.5f * cos(angle);
-        float t = 0.5f - 0.5f * sin(angle); 
+        float t = 0.5f - 0.5f * sin(angle);
 
         vertices.push_back(x);
         vertices.push_back(y);
@@ -78,6 +85,111 @@ void Dartboard::render() {
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
     glUseProgram(0);
+
+    // Render the hit markers after rendering the dartboard
+    renderHitMarkers();
+}
+
+void Dartboard::setupMarker() {
+    // Simple shader for hit markers
+    const char* markerVertexShader = R"(
+        #version 330 core
+        layout(location = 0) in vec2 position;
+        uniform vec2 offset;
+        void main() {
+            gl_Position = vec4(position + offset, 0.0, 1.0);
+        }
+    )";
+
+    const char* markerFragmentShader = R"(
+        #version 330 core
+        out vec4 fragColor;
+        void main() {
+            fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red color for markers
+        }
+    )";
+
+    // Compile and link marker shaders
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &markerVertexShader, nullptr);
+    glCompileShader(vertexShader);
+
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &markerFragmentShader, nullptr);
+    glCompileShader(fragmentShader);
+
+    markerShaderProgram = glCreateProgram();
+    glAttachShader(markerShaderProgram, vertexShader);
+    glAttachShader(markerShaderProgram, fragmentShader);
+    glLinkProgram(markerShaderProgram);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Set up the VAO/VBO for the markers (simple square)
+    float markerVertices[] = {
+        -0.01f, -0.01f, // Bottom-left
+         0.01f, -0.01f, // Bottom-right
+         0.01f,  0.01f, // Top-right
+        -0.01f,  0.01f  // Top-left
+    };
+
+    glGenVertexArrays(1, &markerVAO);
+    glGenBuffers(1, &markerVBO);
+
+    glBindVertexArray(markerVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, markerVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(markerVertices), markerVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void Dartboard::renderHitMarkers() {
+    glUseProgram(markerShaderProgram);
+
+    // Check if the shader program is valid
+    if (markerShaderProgram == 0) {
+        std::cerr << "Error: Marker shader program is not valid!" << std::endl;
+        return;
+    }
+
+    glBindVertexArray(markerVAO);
+
+    // Render each marker
+    for (const auto& hit : hitPositions) {
+        // Check if the uniform location is valid
+        GLint offsetLocation = glGetUniformLocation(markerShaderProgram, "offset");
+        if (offsetLocation == -1) {
+            std::cerr << "Error: Uniform 'offset' not found!" << std::endl;
+            continue;
+        }
+
+        // Set the uniform and render the marker
+        glUniform2f(offsetLocation, hit.first, hit.second);
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR) {
+            std::cout << "OpenGL Error before glDrawArrays: " << err << std::endl;
+        }
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        // Check for any errors
+        while ((err = glGetError()) != GL_NO_ERROR) {
+            std::cerr << "OpenGL Error after glDrawArrays: " << err << std::endl;
+        }
+    }
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
+
+void Dartboard::recordHit(float x, float y) {
+    hitPositions.push_back(std::make_pair(x, y));
 }
 
 unsigned int Dartboard::loadImageToTexture(const char* filePath) {
@@ -155,4 +267,42 @@ unsigned int Dartboard::createShader(const char* vertexShaderPath, const char* f
     glDeleteShader(fragmentShader);
 
     return shaderProgram;
+}
+
+int Dartboard::calculateScore(float x, float y) {
+    // Convert Cartesian coordinates to polar coordinates
+    float radius = sqrt(x * x + y * y);
+    float angle = atan2(y, x);  // Angle in radians
+
+    // Normalize angle to [0, 2?)
+    if (angle < 0) {
+        angle += 2 * M_PI;  // Normalize negative angles
+    }
+
+    float rotationOffset = 80 * (M_PI / 180.0f);  // 5 degrees converted to radians
+    angle -= rotationOffset;  // Apply the small rotation to the angle
+    if (angle < 0) {
+        angle += 2 * M_PI;
+    }
+
+    // Convert angle to sector (assuming 20 equally spaced sectors)
+    int sector = (int)(angle / (2 * M_PI) * 20) % 20;
+
+    // Debugging output for verification
+    std::cout << "Hit Position: (" << x << ", " << y << "), "
+        << "Radius: " << radius << ", "
+        << "Angle (rad): " << angle << ", "
+        << "Sector: " << sector << std::endl;
+
+    // Score zones (adjust thresholds based on dartboard layout)
+    if (radius <= 0.02f) return 50;  // Bullseye (inner red circle)
+    if (radius <= 0.04f) return 25;  // Outer bullseye (green circle)
+    if (radius > 0.38f) return 0;    // Outside the dartboard
+
+    // Check double and triple rings
+    if (radius > 0.35f && radius <= 0.38f) return sectors[sector] * 2;  // Double ring
+    if (radius > 0.22f && radius <= 0.248f) return sectors[sector] * 3;  // Triple ring
+
+    // Regular scoring
+    return sectors[sector];
 }
