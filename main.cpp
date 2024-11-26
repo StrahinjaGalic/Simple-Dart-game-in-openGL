@@ -7,9 +7,10 @@
 #include "Crosshair.h"
 #include "Player.h"
 #include "Background.h"
+#include "TextRenderer.h"
 
 void processInput(GLFWwindow* window);
-void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard);
+void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer);
 void processThrow(Player& currentPlayer, Dartboard& dartboard);
 void checkOpenGLError(const char* description);
 
@@ -17,6 +18,7 @@ void checkOpenGLError(const char* description);
 Player player1("Player 1");
 Player player2("Player 2");
 Crosshair crosshair;
+
 
 int currentPlayer = 0;  // 0 for player1, 1 for player2
 float lastTime = 0.0f;
@@ -51,21 +53,28 @@ int main() {
 
     Background background("barBackground.jpg"); // Load the background texture
     Dartboard dartboard("Dartboard.png", "basic.vert", "basic.frag");
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    TextRenderer textRenderer("Jaro-Regular.ttf", "text.vert", "text.frag", 48);
+    TextRenderer nameRenderer("Jaro-Regular.ttf", "text.vert", "text.frag", 20);
+
     crosshair.initialize();  // Initialize the crosshair
+    crosshair.setColor(1.0f, 0.0f, 0.0f);  // Start with Player 1's color (Red)
 
     // Set up the orthographic projection matrix
-    glMatrixMode(GL_PROJECTION);
+   /* glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);  // Orthographic projection for 2D rendering
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
     // Disable depth testing for 2D rendering
-    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);*/
 
     // Enable blending (optional, for transparency)
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     while (!glfwWindowShouldClose(window)) {
         float currentTime = glfwGetTime();
@@ -74,7 +83,7 @@ int main() {
 
         // Process input
         processInput(window);
-        updateGame(deltaTime, window, dartboard);
+        //updateGame(deltaTime, window, dartboard, textRenderer);
 
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -86,6 +95,11 @@ int main() {
 
         crosshair.render();
         checkOpenGLError("Crosshair rendering");
+
+        updateGame(deltaTime, window, dartboard, textRenderer);
+
+        nameRenderer.RenderText("RA 156/2021", 0.0f, 780.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f)); // Adjust position if needed
+        nameRenderer.RenderText("Strahinja Galic", 0.0f, 760.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f)); // Adjust position if needed
 
         // Check for OpenGL errors
         GLenum err;
@@ -104,7 +118,7 @@ int main() {
 }
 
 void processInput(GLFWwindow* window) {
-    // Example input processing for changing crosshair position (based on mouse)
+    // Get the mouse cursor position in window coordinates
     double mouseX, mouseY;
     glfwGetCursorPos(window, &mouseX, &mouseY);
 
@@ -112,29 +126,89 @@ void processInput(GLFWwindow* window) {
     int width, height;
     glfwGetWindowSize(window, &width, &height);
 
-    // Convert mouse position to OpenGL coordinates (y is flipped)
-    crosshair.setPosition(mouseX / width * 2.0f - 1.0f, 1.0f - mouseY / height * 2.0f);
+    // Convert mouse position to OpenGL normalized coordinates (-1 to 1 range)
+    float normX = (mouseX / width) * 2.0f - 1.0f;  // X coordinate in NDC
+    float normY = 1.0f - (mouseY / height) * 2.0f; // Y coordinate in NDC (y-axis is flipped in OpenGL)
 
-    // Switch players when 'Enter' is pressed (just an example)
+    // Apply random shaking effect to the crosshair
+    float shakeAmount = 0.02f;  // Small shake amount, adjust to taste
+    float shakeX = (rand() % 1000 - 500) / 500.0f * shakeAmount;  // Random shake in X
+    float shakeY = (rand() % 1000 - 500) / 500.0f * shakeAmount;  // Random shake in Y
+
+    // Update the crosshair position with shake
+    crosshair.setPosition(normX + shakeX, normY + shakeY);
+
+    // Check for 'Enter' key press to switch players (for demonstration purposes)
     if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-        // Switch players (just an example, modify logic as needed)
+        // Switch players
         currentPlayer = (currentPlayer == 0) ? 1 : 0;
     }
 }
 
-void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard) {
+
+void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer) {
+    static bool waitingToClear = false;
+    static float clearStartTime = 0.0f;
+
+    // Get the current player
+    Player& current = (currentPlayer == 0) ? player1 : player2;
+
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !throwProcessed) {
-        Player& current = (currentPlayer == 0) ? player1 : player2;
-        processThrow(current, dartboard);
-        throwProcessed = true; // Mark throw as processed
+        if (current.getDartsLeft() > 0) { // Only process throw if player has darts left
+            processThrow(current, dartboard);
+            throwProcessed = true;
+
+            // Check for win condition
+            if (current.getScore() == 501) {
+                std::cout << current.getName() << " wins with a perfect 501!" << std::endl;
+                glfwSetWindowShouldClose(window, true); // Close the window to end the game
+            }
+            else if (current.getDartsLeft() == 0 && !waitingToClear) {
+                // Begin waiting to clear hits
+                waitingToClear = true;
+                clearStartTime = glfwGetTime();
+            }
+        }
+        else {
+            std::cout << current.getName() << " has no darts left!" << std::endl;
+        }
     }
+
+    if (waitingToClear) {
+        float elapsedTime = glfwGetTime() - clearStartTime;
+        if (elapsedTime >= 1.0f) {
+            dartboard.clearHits(); // Clear the hits
+            currentPlayer = (currentPlayer == 0) ? 1 : 0; // Switch players
+            (currentPlayer == 0 ? player1 : player2).resetDarts();
+            waitingToClear = false;
+
+            // Change crosshair color based on the current player
+            if (currentPlayer == 0) {
+                crosshair.setColor(1.0f, 0.0f, 0.0f);  // Red for Player 1
+            }
+            else {
+                crosshair.setColor(0.0f, 0.0f, 1.0f);  // Blue for Player 2
+            }
+
+            std::cout << "Switching to " << (currentPlayer == 0 ? player1.getName() : player2.getName()) << std::endl;
+        }
+    }
+
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
         throwProcessed = false; // Reset when the button is released
     }
 
     // Update crosshair shaking
     crosshair.update(deltaTime);
+
+    // Render the player's name at the top-left corner of the screen
+    std::string text = current.getName() + ": " + std::to_string(current.getScore());
+    textRenderer.RenderText(text, 0.0f, 30.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+    checkOpenGLError("Rendering player name text");
 }
+
+
+
 
 // Toggle function
 void toggleCursor(GLFWwindow* window, bool visible) {

@@ -11,7 +11,7 @@ T clamp(T value, T min, T max) {
     return value;
 }
 
-Crosshair::Crosshair() : x(0.0f), y(0.0f), shakeAmount(0.1f), shaderProgram(0) {}
+Crosshair::Crosshair() : x(0.0f), y(0.0f), shakeAmount(0.5f), shaderProgram(0) {}
 
 
 Crosshair::~Crosshair() {
@@ -52,10 +52,12 @@ void Crosshair::initialize() {
     const char* fragmentShaderSource = R"(
         #version 330 core
         out vec4 FragColor;
+        uniform vec3 crosshairColor; // Color as a uniform variable
         void main() {
-            FragColor = vec4(1.0, 0.0, 0.0, 1.0);; // red color
+            FragColor = vec4(crosshairColor, 1.0); // Use the provided color
         }
     )";
+
 
     // Compile shaders
     unsigned int vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
@@ -102,19 +104,30 @@ void Crosshair::initialize() {
 }
 
 void Crosshair::update(float dt) {
-    // Generate random offsets for shaking
-    float targetX = x + ((rand() % 3) - 1) * shakeAmount;
-    float targetY = y + ((rand() % 3) - 1) * shakeAmount;
+    // Optional: Add a time-based factor to make shake intensity vary over time.
+    static float shakeTime = 0.0f;
+    shakeTime += dt;
 
-    // Apply damping for smoother transitions
-    float damping = 1.0f;  // Adjust between 0.0 (instant) and 1.0 (no movement)
-    x = x * damping + targetX * (1.0f - damping);
-    y = y * damping + targetY * (1.0f - damping);
+    // Increase the shake width with a broader random range
+    float shakeFactor = 0.2f + 0.05f * sin(shakeTime * 2.0f);  // Vary shake width with time, adding a subtle sinusoidal wave
+    float randomX = ((rand() % 11) - 5) * shakeFactor; // Random value in the range [-5, 5]
+    float randomY = ((rand() % 11) - 5) * shakeFactor; // Random value in the range [-5, 5]
 
-    // Clamp the position to keep it within bounds
+    // Apply the shake with a very smooth smoothing factor
+    float smoothingFactor = 0.02f;  // Very low smoothing factor for gradual motion
+    x += (randomX - x) * smoothingFactor;
+    y += (randomY - y) * smoothingFactor;
+
+    // Clamp to ensure the crosshair stays within the bounds of the screen (-1 to 1)
     x = clamp(x, -1.0f, 1.0f);
     y = clamp(y, -1.0f, 1.0f);
 }
+
+
+
+
+
+
 
 
 void Crosshair::render() {
@@ -145,6 +158,24 @@ void Crosshair::render() {
     // Unbind shader program
     glUseProgram(0);
 }
+
+void Crosshair::setColor(float r, float g, float b) {
+    // Use the shader program
+    glUseProgram(shaderProgram);
+
+    // Find and set the crosshairColor uniform
+    GLint colorLoc = glGetUniformLocation(shaderProgram, "crosshairColor");
+    if (colorLoc != -1) {
+        glUniform3f(colorLoc, r, g, b);
+    }
+    else {
+        std::cerr << "Failed to find uniform 'crosshairColor' in shader!" << std::endl;
+    }
+
+    // Unbind the shader program
+    glUseProgram(0);
+}
+
 
 void Crosshair::setPosition(float nx, float ny) {
     x = nx;

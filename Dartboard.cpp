@@ -306,3 +306,7 @@ int Dartboard::calculateScore(float x, float y) {
     // Regular scoring
     return sectors[sector];
 }
+
+void Dartboard::clearHits() {
+    hitPositions.clear();
+}

@@ -11,7 +11,9 @@ void Player::throwDart() {
 }
 
 void Player::addScore(int points) {
-    score += points;
+    if (score + points <= 501) {
+        score += points;
+    }    
 }
 
 int Player::getScore() const {

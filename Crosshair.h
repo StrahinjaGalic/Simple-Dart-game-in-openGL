@@ -11,6 +11,7 @@ public:
     void render();
     void update(float dt);
     void setPosition(float nx, float ny);
+    void setColor(float r, float g, float b);
     float getX() const;
     float getY() const;
 

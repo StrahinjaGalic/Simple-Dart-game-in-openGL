@@ -12,6 +12,7 @@ public:
     int calculateScore(float x, float y);
     void recordHit(float x, float y);
     void renderHitMarkers();
+    void clearHits();
 
 private:
     unsigned int VAO, VBO;
