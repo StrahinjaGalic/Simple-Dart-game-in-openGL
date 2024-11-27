@@ -147,24 +147,32 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Background.cpp" />
+    <ClCompile Include="Button.cpp" />
     <ClCompile Include="Crosshair.cpp" />
     <ClCompile Include="Dartboard.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Overlay.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="basic.frag" />
     <None Include="basic.vert" />
+    <None Include="overlay.frag" />
+    <None Include="overlay.vert" />
     <None Include="packages.config" />
+    <None Include="button.frag" />
+    <None Include="button.vert" />
     <None Include="text.frag" />
     <None Include="text.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Background.h" />
+    <ClInclude Include="Button.h" />
     <ClInclude Include="Crosshair.h" />
     <ClInclude Include="Dartboard.h" />
     <ClInclude Include="Game.h" />
+    <ClInclude Include="Overlay.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="TextRenderer.h" />

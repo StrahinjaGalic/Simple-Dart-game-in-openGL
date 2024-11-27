@@ -36,6 +36,12 @@
     <ClCompile Include="TextRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Overlay.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -49,6 +55,18 @@
       <Filter>Source Files\Shader Files</Filter>
     </None>
     <None Include="text.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="overlay.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="overlay.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="button.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="button.frag">
       <Filter>Source Files\Shader Files</Filter>
     </None>
   </ItemGroup>
@@ -72,6 +90,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TextRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Overlay.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Button.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
