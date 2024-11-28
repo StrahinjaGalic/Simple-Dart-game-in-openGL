@@ -33,6 +33,9 @@ const float rectY = 390.0f; // Y position in NDC space
 const float rectWidth = 0.4f; // Width in NDC
 const float rectHeight = 0.2f; // Height in NDC
 
+const float TARGET_FPS = 60.0f;
+const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
+
 
 // Vertex Shader Source
 const char* vertexShaderSource = R"(
@@ -240,13 +243,25 @@ int main() {
         float deltaTime = currentTime - lastTime;
         lastTime = currentTime;
 
+        // Calculate the time to sleep in order to maintain 60 FPS
+        float frameTime = 1.0f / TARGET_FPS;
+
+        if (deltaTime < frameTime) {
+            // Sleep for the remainder of the frame time if deltaTime is less than the target
+            glfwWaitEventsTimeout(frameTime - deltaTime);
+			currentTime = glfwGetTime();
+			deltaTime = currentTime - lastTime;
+			
+        }
+        lastTime = currentTime;
+
         // Process input
         processInput(window);
 
         glClear(GL_COLOR_BUFFER_BIT);
 
         if (isPaused) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             // Render game objects first
             background.render();
             checkOpenGLError("Background rendering");
@@ -266,13 +281,12 @@ int main() {
 
             // Now render the paused overlay
             overlay.renderPauseMenu();
-			checkOpenGLError("Overlay rendering");
+            checkOpenGLError("Overlay rendering");
 
             renderRectangle(quitRenderer);
             checkOpenGLError("Rectangle rendering");
 
-			checkQuitClick(window); 
-			
+            checkQuitClick(window);
 
         }
         else {
@@ -286,18 +300,19 @@ int main() {
             crosshair.render();
             checkOpenGLError("Crosshair rendering");
 
-
             // Update the game if not paused
             updateGame(deltaTime, window, dartboard, textRenderer);
 
             // Render player's name and details
             nameRenderer.RenderText("RA 156/2021", 0.0f, 780.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-            nameRenderer.RenderText("Strahinja Galic", 0.0f, 760.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));            		    						
+            nameRenderer.RenderText("Strahinja Galic", 0.0f, 760.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
         }
 
+        // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
 
     // Cleanup and exit
     glfwDestroyWindow(window);

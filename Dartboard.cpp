@@ -105,7 +105,7 @@ void Dartboard::setupMarker() {
         #version 330 core
         out vec4 fragColor;
         void main() {
-            fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red color for markers
+            fragColor = vec4(1.0, 1.0, 0.0, 1.0); // Yellow color for markers
         }
     )";
 
@@ -126,12 +126,13 @@ void Dartboard::setupMarker() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // Set up the VAO/VBO for the markers (simple square)
+    // Set up the VAO/VBO for the markers (X shape)
     float markerVertices[] = {
-        -0.01f, -0.01f, // Bottom-left
-         0.01f, -0.01f, // Bottom-right
-         0.01f,  0.01f, // Top-right
-        -0.01f,  0.01f  // Top-left
+        -0.03f, -0.03f, // Bottom-left to Top-right
+         0.03f,  0.03f,
+
+        -0.03f,  0.03f, // Top-left to Bottom-right
+         0.03f, -0.03f
     };
 
     glGenVertexArrays(1, &markerVAO);
@@ -149,6 +150,7 @@ void Dartboard::setupMarker() {
     glBindVertexArray(0);
 }
 
+
 void Dartboard::renderHitMarkers() {
     glUseProgram(markerShaderProgram);
 
@@ -160,6 +162,9 @@ void Dartboard::renderHitMarkers() {
 
     glBindVertexArray(markerVAO);
 
+    // Set the line width (adjust thickness as needed)
+    glLineWidth(4.0f); // Thicker lines for the X marker
+
     // Render each marker
     for (const auto& hit : hitPositions) {
         // Check if the uniform location is valid
@@ -169,23 +174,23 @@ void Dartboard::renderHitMarkers() {
             continue;
         }
 
-        // Set the uniform and render the marker
+        // Set the uniform for the marker position
         glUniform2f(offsetLocation, hit.first, hit.second);
+
+        // Draw the X marker using GL_LINES
+        glDrawArrays(GL_LINES, 0, 4);
+
+        // Check for OpenGL errors
         GLenum err;
         while ((err = glGetError()) != GL_NO_ERROR) {
-            std::cout << "OpenGL Error before glDrawArrays: " << err << std::endl;
-        }
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-        // Check for any errors
-        while ((err = glGetError()) != GL_NO_ERROR) {
-            std::cerr << "OpenGL Error after glDrawArrays: " << err << std::endl;
+            std::cerr << "OpenGL Error: " << err << std::endl;
         }
     }
 
     glBindVertexArray(0);
     glUseProgram(0);
 }
+
 
 
 void Dartboard::recordHit(float x, float y) {
