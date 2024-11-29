@@ -227,7 +227,7 @@ int main() {
     TextRenderer nameRenderer("Jaro-Regular.ttf", "text.vert", "text.frag", 20);
     Overlay overlay("overlay.vert", "overlay.frag", "button.vert", "button.frag"); // Initialize the overlay
     TextRenderer quitRenderer("Jaro-Regular.ttf", "text.vert", "text.frag", 48);
-   
+    TextRenderer arrowRendere("Jaro-Regular.ttf", "text.vert", "text.frag", 48);
 
 	
 
@@ -306,6 +306,7 @@ int main() {
             // Render player's name and details
             nameRenderer.RenderText("RA 156/2021", 0.0f, 780.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
             nameRenderer.RenderText("Strahinja Galic", 0.0f, 760.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+           // arrowRendere.RenderText(player1.getDartsLeft(),);
         }
 
         // Swap buffers and poll events
@@ -399,6 +400,10 @@ void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextR
     std::string text = current.getName() + ": " + std::to_string(current.getScore());
     textRenderer.RenderText(text, 0.0f, 30.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
     checkOpenGLError("Rendering player name text");
+
+    // Display number of darts left
+    std::string dartsLeftText = "Darts left: " + std::to_string(current.getDartsLeft());
+    textRenderer.RenderText(dartsLeftText, -0.9f, 0.8f, 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
 }
 
 void processThrow(Player& currentPlayer, Dartboard& dartboard) {
