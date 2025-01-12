@@ -1,6 +1,8 @@
 #include "Background.h"
 #include <iostream>
 #include "stb_image.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 // Constructor
 Background::Background(const std::string& texturePath) {
@@ -38,8 +40,10 @@ Background::Background(const std::string& texturePath) {
         layout(location = 0) in vec3 aPos;
         layout(location = 1) in vec2 aTexCoord;
         out vec2 TexCoord;
+        uniform mat4 projection;
+        uniform mat4 view;
         void main() {
-            gl_Position = vec4(aPos, 1.0);
+            gl_Position = projection * view * vec4(aPos, 1.0);
             TexCoord = aTexCoord;
         }
     )";
@@ -101,9 +105,16 @@ void Background::loadTexture(const std::string& texturePath) {
 }
 
 // Render the background
-void Background::render() {
+void Background::render(const glm::mat4& projection, const glm::mat4& view) {
     glUseProgram(shaderProgram);
     glBindVertexArray(VAO);
+
+    // Set the projection and view matrices
+    unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -114,3 +125,4 @@ void Background::render() {
     glBindVertexArray(0);
     glUseProgram(0);
 }
+

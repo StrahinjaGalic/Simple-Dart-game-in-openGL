@@ -1,12 +1,13 @@
 #pragma once
 #include <GL/glew.h>
+#include <glm/glm.hpp>
 #include <string>
 
 class Background {
 public:
     Background(const std::string& texturePath); // Constructor with the texture path
     ~Background();
-    void render(); // Render the background
+    void render(const glm::mat4& projection, const glm::mat4& view); // Render the background with projection and view matrices
 
 private:
     GLuint VAO, VBO, textureID, shaderProgram; // OpenGL objects

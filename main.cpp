@@ -36,6 +36,12 @@ const float rectY = 390.0f; // Y position in NDC space
 const float rectWidth = 0.4f; // Width in NDC
 const float rectHeight = 0.2f; // Height in NDC
 float zoomLevel = 1.0f;
+float zoomFactor = 1.0f; // Zoom factor for the dartboard
+
+float targetZoomLevel = 1.0f;
+float currentZoomLevel = 1.0f;
+float zoomSpeed = 0.1f; // Adjust the speed of zooming
+
 
 const float TARGET_FPS = 60.0f;
 const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
@@ -265,13 +271,15 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Create projection and view matrices
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
-        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        float fov = 45.0f / currentZoomLevel; // Adjust FOV based on currentZoomLevel
+        glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 800.0f, 0.1f, 100.0f);
+        glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 2.0f / currentZoomLevel); // Move camera closer based on currentZoomLevel
+        glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         if (isPaused) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             // Render game objects first
-            background.render();
+            background.render(projection, view);
             checkOpenGLError("Background rendering");
 
             dartboard.render(projection, view);
@@ -299,7 +307,7 @@ int main() {
         }
         else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-            background.render();
+            background.render(projection,view);
             checkOpenGLError("Background rendering");
 
             dartboard.render(projection, view);
@@ -326,7 +334,6 @@ int main() {
     glfwTerminate();
     return 0;
 }
-
 
 
 
@@ -367,14 +374,25 @@ void processInput(GLFWwindow* window) {
 
     // Handle zooming
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-        zoomLevel -= 0.1f;
-        if (zoomLevel < 0.1f) zoomLevel = 0.1f; // Prevent zooming too far in
+        targetZoomLevel -= 0.1f;
+        if (targetZoomLevel < 0.1f) targetZoomLevel = 0.1f; // Prevent zooming too far in
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        zoomLevel += 0.1f;
-        if (zoomLevel > 2.0f) zoomLevel = 2.0f; // Prevent zooming too far out
+        targetZoomLevel += 0.1f;
+        if (targetZoomLevel > 2.0f) targetZoomLevel = 2.0f; // Prevent zooming too far out
+    }
+
+    // Handle zooming with Alt key
+    if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS) {
+        currentZoomLevel = 1.1f; // Instantly zoom in
+        std::cout << "Alt key pressed: Zooming in" << std::endl; // Debug output
+    }
+    else {
+        currentZoomLevel = targetZoomLevel; // Reset zoom to target zoom level
     }
 }
+
+
 
 
 
