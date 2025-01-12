@@ -1,11 +1,27 @@
 #version 330 core
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec2 texCoord;
 
-layout(location = 0) in vec2 inPos;
-layout(location = 1) in vec2 inTex;
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
 
-out vec2 chTex;
+out vec2 TexCoord;
+out vec3 FragPos;
 
 void main() {
-    gl_Position = vec4(inPos.x, inPos.y, 0.0, 1.0);  // Pass 2D position to fragment shader
-    chTex = inTex;  // Pass texture coordinate
+    gl_Position = projection * view * model * vec4(position, 1.0f);
+    TexCoord = texCoord;
+    FragPos = position;
 }
+
+
+
+
+
+
+
+
+
+
+

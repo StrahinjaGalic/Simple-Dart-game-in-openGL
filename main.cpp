@@ -1,5 +1,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "Dartboard.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -11,8 +14,8 @@
 #include "Overlay.h" // Assuming you have an Overlay class
 
 void processInput(GLFWwindow* window);
-void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer);
-void processThrow(Player& currentPlayer, Dartboard& dartboard);
+void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer, const glm::mat4& projection, const glm::mat4& view);
+void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& projection, const glm::mat4& view);
 void checkOpenGLError(const char* description);
 
 // Game objects
@@ -32,9 +35,11 @@ const float rectX = 360.0f; // X position in NDC space
 const float rectY = 390.0f; // Y position in NDC space
 const float rectWidth = 0.4f; // Width in NDC
 const float rectHeight = 0.2f; // Height in NDC
+float zoomLevel = 1.0f;
 
 const float TARGET_FPS = 60.0f;
 const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
+
 
 
 // Vertex Shader Source
@@ -139,6 +144,10 @@ unsigned int createShaderProgram(const char* vertexSource, const char* fragmentS
     return shaderProgram;
 }
 
+
+
+
+
 void renderRectangle(TextRenderer& textRenderer) {
     glUseProgram(rectangleShader);
     glBindVertexArray(rectangleVAO);
@@ -217,7 +226,6 @@ int main() {
         return -1;
     }
 
- 
     Background background("barBackground.jpg"); // Load the background texture
     Dartboard dartboard("Dartboard.png", "basic.vert", "basic.frag");
 
@@ -229,14 +237,11 @@ int main() {
     TextRenderer quitRenderer("Jaro-Regular.ttf", "text.vert", "text.frag", 48);
     TextRenderer arrowRendere("Jaro-Regular.ttf", "text.vert", "text.frag", 48);
 
-	
-
     crosshair.initialize();  // Initialize the crosshair
     crosshair.setColor(1.0f, 0.0f, 0.0f);  // Start with Player 1's color (Red)
 
     rectangleVAO = createRectangleVAO();
     rectangleShader = createShaderProgram(vertexShaderSource, fragmentShaderSource);
-
 
     while (!glfwWindowShouldClose(window)) {
         float currentTime = glfwGetTime();
@@ -249,9 +254,8 @@ int main() {
         if (deltaTime < frameTime) {
             // Sleep for the remainder of the frame time if deltaTime is less than the target
             glfwWaitEventsTimeout(frameTime - deltaTime);
-			currentTime = glfwGetTime();
-			deltaTime = currentTime - lastTime;
-			
+            currentTime = glfwGetTime();
+            deltaTime = currentTime - lastTime;
         }
         lastTime = currentTime;
 
@@ -260,20 +264,24 @@ int main() {
 
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // Create projection and view matrices
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
         if (isPaused) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             // Render game objects first
             background.render();
             checkOpenGLError("Background rendering");
 
-            dartboard.render();
+            dartboard.render(projection, view);
             checkOpenGLError("Dartboard rendering");
 
             crosshair.render();
             checkOpenGLError("Crosshair rendering");
 
             // Update the game if not paused
-            updateGame(deltaTime, window, dartboard, textRenderer);
+            updateGame(deltaTime, window, dartboard, textRenderer, projection, view);
 
             // Render player's name and details
             nameRenderer.RenderText("RA 156/2021", 0.0f, 780.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
@@ -294,19 +302,18 @@ int main() {
             background.render();
             checkOpenGLError("Background rendering");
 
-            dartboard.render();
+            dartboard.render(projection, view);
             checkOpenGLError("Dartboard rendering");
 
             crosshair.render();
             checkOpenGLError("Crosshair rendering");
 
             // Update the game if not paused
-            updateGame(deltaTime, window, dartboard, textRenderer);
+            updateGame(deltaTime, window, dartboard, textRenderer, projection, view);
 
             // Render player's name and details
             nameRenderer.RenderText("RA 156/2021", 0.0f, 780.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
             nameRenderer.RenderText("Strahinja Galic", 0.0f, 760.0f, 1.0f, glm::vec3(1.0f, 1.0f, 1.0f));
-           // arrowRendere.RenderText(player1.getDartsLeft(),);
         }
 
         // Swap buffers and poll events
@@ -314,12 +321,17 @@ int main() {
         glfwPollEvents();
     }
 
-
     // Cleanup and exit
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
 }
+
+
+
+
+
+
 
 void processInput(GLFWwindow* window) {
     static bool escPressed = false;
@@ -352,9 +364,23 @@ void processInput(GLFWwindow* window) {
 
         crosshair.setPosition(normX + shakeX, normY + shakeY);
     }
+
+    // Handle zooming
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        zoomLevel -= 0.1f;
+        if (zoomLevel < 0.1f) zoomLevel = 0.1f; // Prevent zooming too far in
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        zoomLevel += 0.1f;
+        if (zoomLevel > 2.0f) zoomLevel = 2.0f; // Prevent zooming too far out
+    }
 }
 
-void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer) {
+
+
+
+
+void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer, const glm::mat4& projection, const glm::mat4& view) {
     static bool waitingToClear = false;
     static float clearStartTime = 0.0f;
 
@@ -362,7 +388,7 @@ void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextR
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !throwProcessed && !isPaused) {
         if (current.getDartsLeft() > 0) {
-            processThrow(current, dartboard);
+            processThrow(current, dartboard, projection, view);
             throwProcessed = true;
 
             if (current.getScore() == 501) {
@@ -406,19 +432,33 @@ void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextR
     textRenderer.RenderText(dartsLeftText, -0.9f, 0.8f, 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
 }
 
-void processThrow(Player& currentPlayer, Dartboard& dartboard) {
+
+void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& projection, const glm::mat4& view) {
     float hitX = crosshair.getX();
     float hitY = crosshair.getY();
 
-    int points = dartboard.calculateScore(hitX, hitY);
-    dartboard.recordHit(hitX, hitY);
+    // Adjust the scaling factor to match the visual dartboard space
+    // Try different values between 0.5 and 1.0 to find the best match
+    float scaleFactor = 0.95f; // Experiment with this value
+    float dartboardX = hitX * scaleFactor;
+    float dartboardY = hitY * scaleFactor;
 
-    std::cout << currentPlayer.getName() << " hit (" << hitX << ", " << hitY
+    dartboard.recordHit(dartboardX, dartboardY);
+    int points = dartboard.calculateScore(dartboardX, dartboardY);
+
+    std::cout << currentPlayer.getName() << " hit (" << dartboardX << ", " << dartboardY
         << ") and scored " << points << " points!\n";
 
     currentPlayer.addScore(points);
     currentPlayer.throwDart();
 }
+
+
+
+
+
+
+
 
 void checkOpenGLError(const char* description) {
     GLenum err;
@@ -436,4 +476,6 @@ void checkOpenGLError(const char* description) {
         }
         std::cout << "OpenGL Error (" << description << "): " << error << std::endl;
     }
+
+
 }

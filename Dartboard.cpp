@@ -4,9 +4,13 @@
 #include <fstream>
 #include <sstream>
 #include "stb_image.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+
 
 // Constants
-const float Dartboard::RADIUS = 0.5f;
+const float Dartboard::RADIUS = 0.4f;
 #define M_PI 3.14159265358979323846
 
 Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, const char* fragmentShaderPath) {
@@ -23,12 +27,12 @@ Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, cons
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
-    unsigned int stride = (2 + 2) * sizeof(float); // Position (2 floats) + texture coordinates (2 floats)
+    unsigned int stride = (3 + 2) * sizeof(float); // Position (3 floats) + texture coordinates (2 floats)
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -41,6 +45,14 @@ Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, cons
     setupMarker();
 }
 
+
+
+
+
+
+
+
+
 Dartboard::~Dartboard() {
     glDeleteTextures(1, &textureID);
     glDeleteBuffers(1, &VBO);
@@ -52,14 +64,17 @@ Dartboard::~Dartboard() {
 }
 
 void Dartboard::generateCircleVertices() {
+    const float depth = 0.0f; // Set the depth to 0 to make the dartboard flat
+
+    // Front face
     vertices.push_back(0.0f); // Center X
     vertices.push_back(0.0f); // Center Y
+    vertices.push_back(depth); // Front Z
     vertices.push_back(0.5f); // Texture S
     vertices.push_back(0.5f); // Texture T
 
-    // Generate the vertices for the circle (triangle fan)
     for (int i = 0; i <= NUM_SEGMENTS; ++i) {
-        float angle = 2.0f * 3.14 * i / NUM_SEGMENTS;
+        float angle = 2.0f * M_PI * i / NUM_SEGMENTS;
         float x = RADIUS * cos(angle);
         float y = RADIUS * sin(angle);
         float s = 0.5f + 0.5f * cos(angle);
@@ -67,19 +82,44 @@ void Dartboard::generateCircleVertices() {
 
         vertices.push_back(x);
         vertices.push_back(y);
+        vertices.push_back(depth); // Front Z
         vertices.push_back(s);
         vertices.push_back(t);
     }
 }
 
-void Dartboard::render() {
+
+
+
+
+
+
+
+
+
+
+
+void Dartboard::render(const glm::mat4& projection, const glm::mat4& view) {
     glUseProgram(shaderProgram);
     glBindVertexArray(VAO);
 
+    // Set the projection, view, and model matrices
+    unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+    unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
+
+    glm::mat4 model = glm::mat4(1.0f); // Identity matrix for model
+
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+    // Bind the texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
+    glUniform1i(glGetUniformLocation(shaderProgram, "dartboardTexture"), 0);
 
-    // Render the dartboard
+    // Render the front face
     glDrawArrays(GL_TRIANGLE_FAN, 0, NUM_SEGMENTS + 2);
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -89,6 +129,18 @@ void Dartboard::render() {
     // Render the hit markers after rendering the dartboard
     renderHitMarkers();
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 void Dartboard::setupMarker() {
     // Simple shader for hit markers
@@ -174,6 +226,9 @@ void Dartboard::renderHitMarkers() {
             continue;
         }
 
+        // Debugging output for verification
+        std::cout << "Rendering hit marker at: (" << hit.first << ", " << hit.second << ")" << std::endl;
+
         // Set the uniform for the marker position
         glUniform2f(offsetLocation, hit.first, hit.second);
 
@@ -193,9 +248,21 @@ void Dartboard::renderHitMarkers() {
 
 
 
+
+
+
 void Dartboard::recordHit(float x, float y) {
+    // Directly use the coordinates without additional transformation
     hitPositions.push_back(std::make_pair(x, y));
+
+    // Debugging output for verification
+    std::cout << "Recorded hit at: (" << x << ", " << y << ")" << std::endl;
 }
+
+
+
+
+
 
 unsigned int Dartboard::loadImageToTexture(const char* filePath) {
     int width, height, channels;

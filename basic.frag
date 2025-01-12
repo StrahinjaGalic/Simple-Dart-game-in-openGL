@@ -1,11 +1,23 @@
 #version 330 core
+in vec2 TexCoord;
+in vec3 FragPos;
 
-in vec2 chTex;  // Texture coordinates from the vertex shader
-out vec4 outCol;
+out vec4 FragColor;
 
-uniform sampler2D uTex;  // Texture sampler
+uniform sampler2D dartboardTexture;
 
 void main() {
-    outCol = texture(uTex, chTex);  // Sample the texture at the given coordinates
+    if (TexCoord == vec2(0.0f, 0.0f)) {
+        FragColor = vec4(0.3f, 0.3f, 0.3f, 1.0f); // Lighter shade for sides
+    } else {
+        FragColor = texture(dartboardTexture, TexCoord);
+    }
 }
+
+
+
+
+
+
+
 
