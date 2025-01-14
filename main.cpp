@@ -366,8 +366,8 @@ void processInput(GLFWwindow* window) {
 
         // Apply random shaking effect to the crosshair
         float shakeAmount = 0.02f;
-        float shakeX = (rand() % 1000 - 500) / 500.0f * shakeAmount;
-        float shakeY = (rand() % 1000 - 500) / 500.0f * shakeAmount;
+        float shakeX = 0;/*(rand() % 1000 - 500) / 500.0f * shakeAmount;*/
+        float shakeY = 0;/*(rand() % 1000 - 500) / 500.0f * shakeAmount;*/
 
         crosshair.setPosition(normX + shakeX, normY + shakeY);
     }
@@ -455,14 +455,18 @@ void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& 
     float hitX = crosshair.getX();
     float hitY = crosshair.getY();
 
-    // Adjust the scaling factor to match the visual dartboard space
-    // Try different values between 0.5 and 1.0 to find the best match
-    float scaleFactor = 0.95f; // Experiment with this value
-    float dartboardX = hitX * scaleFactor;
-    float dartboardY = hitY * scaleFactor;
+    // Adjust for zoom level
+    float adjustedHitX = hitX / currentZoomLevel;
+    float adjustedHitY = hitY / currentZoomLevel;
+
+    // Apply scale factor only when zoomed in
+    float scaleFactor = (currentZoomLevel > 1.0f) ? currentZoomLevel : 1.0f;
+
+    float dartboardX = adjustedHitX * scaleFactor;
+    float dartboardY = adjustedHitY * scaleFactor;
 
     dartboard.recordHit(dartboardX, dartboardY);
-    int points = dartboard.calculateScore(dartboardX, dartboardY);
+    int points = dartboard.calculateScore(dartboardX, dartboardY, currentZoomLevel);
 
     std::cout << currentPlayer.getName() << " hit (" << dartboardX << ", " << dartboardY
         << ") and scored " << points << " points!\n";
@@ -470,6 +474,10 @@ void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& 
     currentPlayer.addScore(points);
     currentPlayer.throwDart();
 }
+
+
+
+
 
 
 

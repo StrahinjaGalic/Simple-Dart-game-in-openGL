@@ -11,7 +11,7 @@ public:
     Dartboard(const char* texturePath, const char* vertexShaderPath, const char* fragmentShaderPath);
     ~Dartboard();
     void render(const glm::mat4& projection, const glm::mat4& view);
-    int calculateScore(float x, float y);
+    int calculateScore(float x, float y, float zoomLevel);
     void recordHit(float x, float y);
     void renderHitMarkers();
     void clearHits();

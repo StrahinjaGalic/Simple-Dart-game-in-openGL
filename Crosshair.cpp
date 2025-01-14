@@ -104,20 +104,20 @@ void Crosshair::initialize() {
 }
 
 void Crosshair::update(float dt) {
-    static float shakeTime = 0.0f;
-    shakeTime += dt;
+    //static float shakeTime = 0.0f;
+    //shakeTime += dt;
 
-    // Increase the shake width with a broader random range
-    float shakeFactor = 0.2f + 0.05f * sin(shakeTime * 2.0f);  // Vary shake width over time
+    //// Increase the shake width with a broader random range
+    //float shakeFactor = 0.2f + 0.05f * sin(shakeTime * 2.0f);  // Vary shake width over time
 
-    // Generate random shake values
-    float randomX = ((rand() % 11) - 5) * shakeFactor;
-    float randomY = ((rand() % 11) - 5) * shakeFactor;
+    //// Generate random shake values
+    //float randomX = ((rand() % 11) - 5) * shakeFactor;
+    //float randomY = ((rand() % 11) - 5) * shakeFactor;
 
-    // Apply the shake with smoothing based on the time difference (dt)
-    float smoothingFactor = 0.1f;  // Slightly higher smoothing factor for smoother movement
-    x += (randomX - x) * smoothingFactor * dt;  // Use dt to make movement frame rate-independent
-    y += (randomY - y) * smoothingFactor * dt;  // Use dt here as well
+    //// Apply the shake with smoothing based on the time difference (dt)
+    //float smoothingFactor = 0.1f;  // Slightly higher smoothing factor for smoother movement
+    //x += (randomX - x) * smoothingFactor * dt;  // Use dt to make movement frame rate-independent
+    //y += (randomY - y) * smoothingFactor * dt;  // Use dt here as well
 
     // Clamp the values to prevent the crosshair from moving out of bounds
     x = clamp(x, -1.0f, 1.0f);

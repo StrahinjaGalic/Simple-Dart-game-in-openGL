@@ -341,7 +341,7 @@ unsigned int Dartboard::createShader(const char* vertexShaderPath, const char* f
     return shaderProgram;
 }
 
-int Dartboard::calculateScore(float x, float y) {
+int Dartboard::calculateScore(float x, float y, float zoomLevel) {
     // Convert Cartesian coordinates to polar coordinates
     float radius = sqrt(x * x + y * y);
     float angle = atan2(y, x);  // Angle in radians
@@ -360,6 +360,15 @@ int Dartboard::calculateScore(float x, float y) {
     // Convert angle to sector (assuming 20 equally spaced sectors)
     int sector = (int)(angle / (2 * M_PI) * 20) % 20;
 
+    // Adjust radius thresholds based on zoom level
+    float bullseyeInnerRadius = 0.02f * (zoomLevel + 0.15);
+    float bullseyeOuterRadius = 0.04f * (zoomLevel + 0.15);
+    float outerRadius = 0.35f * (zoomLevel + 0.15);
+    float doubleRingInnerRadius = 0.33f * (zoomLevel + 0.15);
+    float doubleRingOuterRadius = 0.35f * (zoomLevel + 0.15);
+    float tripleRingInnerRadius = 0.20f * (zoomLevel + 0.15);
+    float tripleRingOuterRadius = 0.24f * (zoomLevel + 0.15);
+
     // Debugging output for verification
     std::cout << "Hit Position: (" << x << ", " << y << "), "
         << "Radius: " << radius << ", "
@@ -367,17 +376,19 @@ int Dartboard::calculateScore(float x, float y) {
         << "Sector: " << sector << std::endl;
 
     // Score zones (adjust thresholds based on dartboard layout)
-    if (radius <= 0.02f) return 50;  // Bullseye (inner red circle)
-    if (radius <= 0.04f) return 25;  // Outer bullseye (green circle)
-    if (radius > 0.38f) return 0;    // Outside the dartboard
+    if (radius <= bullseyeInnerRadius) return 50;  // Bullseye (inner red circle)
+    if (radius <= bullseyeOuterRadius) return 25;  // Outer bullseye (green circle)
+    if (radius > outerRadius) return 0;    // Outside the dartboard
 
     // Check double and triple rings
-    if (radius > 0.35f && radius <= 0.38f) return sectors[sector] * 2;  // Double ring
-    if (radius > 0.22f && radius <= 0.248f) return sectors[sector] * 3;  // Triple ring
+    if (radius > doubleRingInnerRadius && radius <= doubleRingOuterRadius) return sectors[sector] * 2;  // Double ring
+    if (radius > tripleRingInnerRadius && radius <= tripleRingOuterRadius) return sectors[sector] * 3;  // Triple ring
 
     // Regular scoring
     return sectors[sector];
 }
+
+
 
 void Dartboard::clearHits() {
     hitPositions.clear();
