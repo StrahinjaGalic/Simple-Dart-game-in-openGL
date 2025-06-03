@@ -20,6 +20,7 @@ public:
     void recordHit(float x, float y);
     void renderHitMarkers();
     void clearHits();
+    static const float RADIUS;
 
 
 private:
@@ -35,7 +36,6 @@ private:
     unsigned int markerVAO, markerVBO;
     unsigned int markerShaderProgram;
     static const int NUM_SEGMENTS = 100;
-    static const float RADIUS;
     std::vector<float> vertices;
     int sectors[20] = { 20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10, 6, 13, 4, 18, 1 };
     std::vector<std::pair<float, float>> hitPositions;

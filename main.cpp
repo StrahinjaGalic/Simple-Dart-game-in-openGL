@@ -456,28 +456,42 @@ void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextR
 
 
 void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& projection, const glm::mat4& view) {
+    // Get crosshair NDC position
     float hitX = crosshair.getX();
     float hitY = crosshair.getY();
 
-    // Adjust for zoom level
-    float adjustedHitX = hitX / currentZoomLevel;
-    float adjustedHitY = hitY / currentZoomLevel;
+    // Window size (update if your window size is not 800x800)
+    int width = 800, height = 800;
 
-    // Apply scale factor only when zoomed in
-    float scaleFactor = (currentZoomLevel > 1.0f) ? currentZoomLevel : 1.0f;
+    // Convert NDC [-1,1] to window coordinates
+    float winX = (hitX * 0.5f + 0.5f) * width;
+    float winY = (hitY * 0.5f + 0.5f) * height;
 
-    float dartboardX = adjustedHitX * scaleFactor;
-    float dartboardY = adjustedHitY * scaleFactor;
+    // Dartboard is at z = 0.1f in world space
+    float boardZ = 0.1f;
 
-    dartboard.recordHit(dartboardX, dartboardY);
-    int points = dartboard.calculateScore(dartboardX, dartboardY, currentZoomLevel);
+    // Unproject: get world coordinates at near and far plane
+    glm::vec4 viewport(0, 0, width, height);
+    glm::vec3 nearPoint = glm::unProject(glm::vec3(winX, winY, 0.0f), view, projection, viewport);
+    glm::vec3 farPoint  = glm::unProject(glm::vec3(winX, winY, 1.0f), view, projection, viewport);
 
-    std::cout << currentPlayer.getName() << " hit (" << dartboardX << ", " << dartboardY
-        << ") and scored " << points << " points!\n";
+    // Interpolate to the dartboard's z
+    float t = (boardZ - nearPoint.z) / (farPoint.z - nearPoint.z);
+    glm::vec3 worldPos = nearPoint + t * (farPoint - nearPoint);
+
+    // Record the hit at the computed world position
+    dartboard.recordHit(worldPos.x, worldPos.y);
+    int points = dartboard.calculateScore(worldPos.x, worldPos.y, currentZoomLevel);
+
+    std::cout << currentPlayer.getName() << " hit (" << worldPos.x << ", " << worldPos.y
+              << ") and scored " << points << " points!\n";
+    std::cout << "Crosshair NDC: (" << hitX << ", " << hitY << ")\n";
+    std::cout << "Dartboard coords: (" << worldPos.x << ", " << worldPos.y << ")\n";
 
     currentPlayer.addScore(points);
     currentPlayer.throwDart();
 }
+
 
 
 

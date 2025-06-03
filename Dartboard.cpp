@@ -262,6 +262,7 @@ void Dartboard::recordHit(float x, float y) {
     glm::vec3 dir(0.0f, 0.0f, -1.0f); // Dart points into the board
     dartHits.push_back({ pos, dir });
     std::cout << "Recorded dart at: (" << x << ", " << y << ", 0.1)" << std::endl;
+
 }
 
 
@@ -366,13 +367,13 @@ int Dartboard::calculateScore(float x, float y, float zoomLevel) {
     int sector = (int)(angle / (2 * M_PI) * 20) % 20;
 
     // Adjust radius thresholds based on zoom level
-    float bullseyeInnerRadius = 0.02f * (zoomLevel + 0.15);
-    float bullseyeOuterRadius = 0.04f * (zoomLevel + 0.15);
-    float outerRadius = 0.35f * (zoomLevel + 0.15);
-    float doubleRingInnerRadius = 0.33f * (zoomLevel + 0.15);
-    float doubleRingOuterRadius = 0.35f * (zoomLevel + 0.15);
-    float tripleRingInnerRadius = 0.20f * (zoomLevel + 0.15);
-    float tripleRingOuterRadius = 0.24f * (zoomLevel + 0.15);
+    float bullseyeInnerRadius = 0.01f * (zoomLevel + 0.10);
+    float bullseyeOuterRadius = 0.02f * (zoomLevel + 0.5);
+    float outerRadius = 0.26f * (zoomLevel + 0.15);
+    float doubleRingInnerRadius = 0.185f * (zoomLevel + 0.5);
+    float doubleRingOuterRadius = 0.27f * (zoomLevel + 0.1);
+    float tripleRingInnerRadius = 0.15f * (zoomLevel + 0.15);
+    float tripleRingOuterRadius = 0.169f * (zoomLevel + 0.15);
 
     // Debugging output for verification
     std::cout << "Hit Position: (" << x << ", " << y << "), "
