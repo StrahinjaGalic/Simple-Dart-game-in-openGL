@@ -43,6 +43,7 @@ Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, cons
 
     // Initialize marker resources
     setupMarker();
+    setupDart();
 }
 
 
@@ -61,10 +62,14 @@ Dartboard::~Dartboard() {
     glDeleteBuffers(1, &markerVBO);
     glDeleteVertexArrays(1, &markerVAO);
     glDeleteProgram(markerShaderProgram);
+    glDeleteVertexArrays(1, &dartVAO);
+    glDeleteBuffers(1, &dartVBO);
+    glDeleteProgram(dartShaderProgram);
+
 }
 
 void Dartboard::generateCircleVertices() {
-    const float depth = 0.0f; // Set the depth to 0 to make the dartboard flat
+    const float depth = 0.1f; // Set the depth to 0 to make the dartboard flat
 
     // Front face
     vertices.push_back(0.0f); // Center X
@@ -127,7 +132,7 @@ void Dartboard::render(const glm::mat4& projection, const glm::mat4& view) {
     glUseProgram(0);
 
     // Render the hit markers after rendering the dartboard
-    renderHitMarkers();
+    renderDarts(projection, view);
 }
 
 
@@ -252,11 +257,10 @@ void Dartboard::renderHitMarkers() {
 
 
 void Dartboard::recordHit(float x, float y) {
-    // Directly use the coordinates without additional transformation
-    hitPositions.push_back(std::make_pair(x, y));
-
-    // Debugging output for verification
-    std::cout << "Recorded hit at: (" << x << ", " << y << ")" << std::endl;
+    glm::vec3 pos(x, y, 0.1f); // Board is at z=0.1f
+    glm::vec3 dir(0.0f, 0.0f, -1.0f); // Dart points into the board
+    dartHits.push_back({ pos, dir });
+    std::cout << "Recorded dart at: (" << x << ", " << y << ", 0.1)" << std::endl;
 }
 
 
@@ -391,5 +395,64 @@ int Dartboard::calculateScore(float x, float y, float zoomLevel) {
 
 
 void Dartboard::clearHits() {
-    hitPositions.clear();
+    dartHits.clear();
+}
+
+void Dartboard::setupDart() {
+    float dartVertices[] = {
+        0.0f, 0.0f, 0.0f,    // Tail
+        0.0f, 0.0f, -0.1f    // Tip (10cm long)
+    };
+
+    glGenVertexArrays(1, &dartVAO);
+    glGenBuffers(1, &dartVBO);
+    glBindVertexArray(dartVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, dartVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(dartVertices), dartVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    dartShaderProgram = createShader("dart.vert", "dart.frag");
+    std::cout << "dartShaderProgram: " << dartShaderProgram << std::endl;
+}
+
+void Dartboard::renderDarts(const glm::mat4& projection, const glm::mat4& view) {
+    for (const auto& dart : dartHits) {
+        renderSingleDart(dart.position, dart.direction, projection, view);
+    }
+}
+
+void Dartboard::renderSingleDart(const glm::vec3& pos, const glm::vec3& dir, const glm::mat4& projection, const glm::mat4& view) {
+    glUseProgram(dartShaderProgram);
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) std::cerr << "Error after glUseProgram: " << err << std::endl;
+
+    glBindVertexArray(dartVAO);
+    err = glGetError();
+    if (err != GL_NO_ERROR) std::cerr << "Error after glBindVertexArray: " << err << std::endl;
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, pos);
+
+    GLint projLoc = glGetUniformLocation(dartShaderProgram, "projection");
+    GLint viewLoc = glGetUniformLocation(dartShaderProgram, "view");
+    GLint modelLoc = glGetUniformLocation(dartShaderProgram, "model");
+    std::cout << "projLoc: " << projLoc << ", viewLoc: " << viewLoc << ", modelLoc: " << modelLoc << std::endl;
+
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+    err = glGetError();
+    if (err != GL_NO_ERROR) std::cerr << "Error after setting uniforms: " << err << std::endl;
+
+    glDrawArrays(GL_LINES, 0, 2);
+
+    err = glGetError();
+    if (err != GL_NO_ERROR) std::cerr << "Error after glDrawArrays: " << err << std::endl;
+
+    glBindVertexArray(0);
+    glUseProgram(0);
 }

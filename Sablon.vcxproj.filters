@@ -69,6 +69,12 @@
     <None Include="button.frag">
       <Filter>Source Files\Shader Files</Filter>
     </None>
+    <None Include="dart.frag">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
+    <None Include="dart.vert">
+      <Filter>Source Files\Shader Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Game.h">
@@ -107,6 +113,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="barBackground.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="dart.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

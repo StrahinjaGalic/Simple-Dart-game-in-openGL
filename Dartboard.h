@@ -5,6 +5,11 @@
 #include <utility>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <glm/glm.hpp>
+struct DartHit {
+    glm::vec3 position;
+    glm::vec3 direction;
+};
 
 class Dartboard {
 public:
@@ -16,7 +21,11 @@ public:
     void renderHitMarkers();
     void clearHits();
 
+
 private:
+    unsigned int dartVAO = 0, dartVBO = 0;
+    unsigned int dartShaderProgram = 0;
+    std::vector<DartHit> dartHits;
     unsigned int VAO, VBO;
     unsigned int shaderProgram;
     unsigned int textureID;
@@ -33,6 +42,9 @@ private:
     unsigned int compileShader(GLenum type, const char* sourcePath);
     unsigned int createShader(const char* vertexShaderPath, const char* fragmentShaderPath);
     void setupMarker();
+    void setupDart();
+    void renderDarts(const glm::mat4& projection, const glm::mat4& view);
+    void renderSingleDart(const glm::vec3& pos, const glm::vec3& dir, const glm::mat4& projection, const glm::mat4& view);
 };
 
 #endif // DARTBOARD_H

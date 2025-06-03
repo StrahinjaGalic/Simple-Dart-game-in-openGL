@@ -158,6 +158,8 @@
   <ItemGroup>
     <None Include="basic.frag" />
     <None Include="basic.vert" />
+    <None Include="dart.frag" />
+    <None Include="dart.vert" />
     <None Include="overlay.frag" />
     <None Include="overlay.vert" />
     <None Include="packages.config" />
@@ -179,6 +181,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="barBackground.jpg" />
+    <Image Include="dart.png" />
     <Image Include="Dartboard%28Small%29.png">
       <DeploymentContent>true</DeploymentContent>
     </Image>
