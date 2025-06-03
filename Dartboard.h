@@ -23,6 +23,9 @@ public:
 
 
 private:
+    std::vector<float> dartMeshVertices;
+    std::vector<unsigned int> dartMeshIndices;
+    unsigned int dartMeshVAO = 0, dartMeshVBO = 0, dartMeshEBO = 0;
     unsigned int dartVAO = 0, dartVBO = 0;
     unsigned int dartShaderProgram = 0;
     std::vector<DartHit> dartHits;
@@ -45,6 +48,8 @@ private:
     void setupDart();
     void renderDarts(const glm::mat4& projection, const glm::mat4& view);
     void renderSingleDart(const glm::vec3& pos, const glm::vec3& dir, const glm::mat4& projection, const glm::mat4& view);
+    void setupDartMesh();
+    void renderDartMesh(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection);
 };
 
 #endif // DARTBOARD_H

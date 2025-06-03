@@ -44,6 +44,7 @@ Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, cons
     // Initialize marker resources
     setupMarker();
     setupDart();
+    setupDartMesh();
 }
 
 
@@ -425,33 +426,120 @@ void Dartboard::renderDarts(const glm::mat4& projection, const glm::mat4& view) 
 }
 
 void Dartboard::renderSingleDart(const glm::vec3& pos, const glm::vec3& dir, const glm::mat4& projection, const glm::mat4& view) {
-    glUseProgram(dartShaderProgram);
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) std::cerr << "Error after glUseProgram: " << err << std::endl;
-
-    glBindVertexArray(dartVAO);
-    err = glGetError();
-    if (err != GL_NO_ERROR) std::cerr << "Error after glBindVertexArray: " << err << std::endl;
-
+    // Build the model matrix: translate to dart position, then orient along dir
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, pos);
 
-    GLint projLoc = glGetUniformLocation(dartShaderProgram, "projection");
-    GLint viewLoc = glGetUniformLocation(dartShaderProgram, "view");
-    GLint modelLoc = glGetUniformLocation(dartShaderProgram, "model");
-    std::cout << "projLoc: " << projLoc << ", viewLoc: " << viewLoc << ", modelLoc: " << modelLoc << std::endl;
+    // Orient the dart so it points in the direction of 'dir'
+    glm::vec3 defaultDir(0.0f, 0.0f, -1.0f); // The mesh points down -Z by default
+    glm::vec3 normDir = glm::normalize(dir);
+    if (glm::length(normDir - defaultDir) > 0.0001f) {
+        glm::vec3 axis = glm::cross(defaultDir, normDir);
+        float angle = acos(glm::clamp(glm::dot(defaultDir, normDir), -1.0f, 1.0f));
+        if (glm::length(axis) > 0.0001f) {
+            model = glm::rotate(model, angle, glm::normalize(axis));
+        }
+    }
 
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    // Render the dart mesh
+    renderDartMesh(model, view, projection);
+}
 
-    err = glGetError();
-    if (err != GL_NO_ERROR) std::cerr << "Error after setting uniforms: " << err << std::endl;
 
-    glDrawArrays(GL_LINES, 0, 2);
+void Dartboard::setupDartMesh() {
+    // Parameters (increased for better visibility)
+    const int segments = 16;
+    const float shaftLength = 0.12f;   // was 0.08f
+    const float shaftRadius = 0.01f;   // was 0.005f
+    const float tipLength = 0.03f;     // was 0.02f
+    const float tipRadius = 0.016f;    // was 0.008f
 
-    err = glGetError();
-    if (err != GL_NO_ERROR) std::cerr << "Error after glDrawArrays: " << err << std::endl;
+    dartMeshVertices.clear();
+    dartMeshIndices.clear();
+
+    // Shaft (cylinder)
+    for (int i = 0; i <= segments; ++i) {
+        float theta = 2.0f * M_PI * i / segments;
+        float x = cos(theta);
+        float y = sin(theta);
+
+        // Bottom circle
+        dartMeshVertices.push_back(shaftRadius * x);
+        dartMeshVertices.push_back(shaftRadius * y);
+        dartMeshVertices.push_back(0.0f);
+
+        // Top circle
+        dartMeshVertices.push_back(shaftRadius * x);
+        dartMeshVertices.push_back(shaftRadius * y);
+        dartMeshVertices.push_back(-shaftLength);
+    }
+
+    // Indices for shaft (cylinder sides)
+    for (int i = 0; i < segments; ++i) {
+        int base = i * 2;
+        dartMeshIndices.push_back(base);
+        dartMeshIndices.push_back(base + 1);
+        dartMeshIndices.push_back(base + 2);
+
+        dartMeshIndices.push_back(base + 1);
+        dartMeshIndices.push_back(base + 3);
+        dartMeshIndices.push_back(base + 2);
+    }
+
+    // Tip (cone)
+    int tipBaseIndex = (segments + 1) * 2;
+    for (int i = 0; i <= segments; ++i) {
+        float theta = 2.0f * M_PI * i / segments;
+        float x = cos(theta);
+        float y = sin(theta);
+
+        // Base of cone
+        dartMeshVertices.push_back(tipRadius * x);
+        dartMeshVertices.push_back(tipRadius * y);
+        dartMeshVertices.push_back(-shaftLength);
+
+        // Tip point
+        dartMeshVertices.push_back(0.0f);
+        dartMeshVertices.push_back(0.0f);
+        dartMeshVertices.push_back(-shaftLength - tipLength);
+    }
+
+    // Indices for tip (cone sides)
+    for (int i = 0; i < segments; ++i) {
+        int base = tipBaseIndex + i * 2;
+        dartMeshIndices.push_back(base);
+        dartMeshIndices.push_back(base + 1);
+        dartMeshIndices.push_back(base + 2);
+    }
+
+    // OpenGL buffers
+    glGenVertexArrays(1, &dartMeshVAO);
+    glGenBuffers(1, &dartMeshVBO);
+    glGenBuffers(1, &dartMeshEBO);
+
+    glBindVertexArray(dartMeshVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, dartMeshVBO);
+    glBufferData(GL_ARRAY_BUFFER, dartMeshVertices.size() * sizeof(float), dartMeshVertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dartMeshEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, dartMeshIndices.size() * sizeof(unsigned int), dartMeshIndices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+}
+
+
+void Dartboard::renderDartMesh(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection) {
+    glUseProgram(dartShaderProgram);
+    glBindVertexArray(dartMeshVAO);
+
+    glUniformMatrix4fv(glGetUniformLocation(dartShaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(glGetUniformLocation(dartShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(dartShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(dartMeshIndices.size()), GL_UNSIGNED_INT, 0);
 
     glBindVertexArray(0);
     glUseProgram(0);
