@@ -370,8 +370,8 @@ void processInput(GLFWwindow* window) {
 
         // Apply random shaking effect to the crosshair
         float shakeAmount = 0.02f;
-        float shakeX = 0;/*(rand() % 1000 - 500) / 500.0f * shakeAmount;*/
-        float shakeY = 0;/*(rand() % 1000 - 500) / 500.0f * shakeAmount;*/
+        float shakeX = ((rand() % 1000 - 500) / 500.0f) * shakeAmount;
+        float shakeY = ((rand() % 1000 - 500) / 500.0f) * shakeAmount;
 
         crosshair.setPosition(normX + shakeX, normY + shakeY);
     }

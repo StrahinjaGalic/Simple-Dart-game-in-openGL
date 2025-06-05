@@ -140,7 +140,7 @@ void Crosshair::render() {
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
     if (modelLoc == -1) {
         std::cerr << "Failed to find uniform 'model' in shader!" << std::endl;
-        return;  // If the uniform isn't found, exit rendering this frame
+        return;
     }
 
     // Create translation matrix to move crosshair to (x, y)
@@ -152,14 +152,18 @@ void Crosshair::render() {
     };
     glUniformMatrix4fv(modelLoc, 1, GL_TRUE, model);
 
+    // Set line width for thicker crosshair
+    glLineWidth(5.0f); // Increase this value for even thicker lines
+
     // Bind VAO and render the crosshair
     glBindVertexArray(VAO);
-    glDrawArrays(GL_LINES, 0, 4);  // Render 4 lines (crosshair)
+    glDrawArrays(GL_LINES, 0, 4);
     glBindVertexArray(0);
 
     // Unbind shader program
     glUseProgram(0);
 }
+
 
 void Crosshair::setColor(float r, float g, float b) {
     // Use the shader program

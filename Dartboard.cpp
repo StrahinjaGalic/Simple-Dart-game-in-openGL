@@ -27,13 +27,16 @@ Dartboard::Dartboard(const char* texturePath, const char* vertexShaderPath, cons
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
-    unsigned int stride = (3 + 2) * sizeof(float); // Position (3 floats) + texture coordinates (2 floats)
+    unsigned int stride = (3 + 3 + 2) * sizeof(float); // pos + normal + texcoord
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -70,14 +73,18 @@ Dartboard::~Dartboard() {
 }
 
 void Dartboard::generateCircleVertices() {
-    const float depth = 0.1f; // Set the depth to 0 to make the dartboard flat
+    const float depth = 0.1f;
+    vertices.clear();
 
-    // Front face
-    vertices.push_back(0.0f); // Center X
-    vertices.push_back(0.0f); // Center Y
-    vertices.push_back(depth); // Front Z
-    vertices.push_back(0.5f); // Texture S
-    vertices.push_back(0.5f); // Texture T
+    // Center vertex
+    vertices.push_back(0.0f); // X
+    vertices.push_back(0.0f); // Y
+    vertices.push_back(depth); // Z
+    vertices.push_back(0.0f); // NX
+    vertices.push_back(0.0f); // NY
+    vertices.push_back(1.0f); // NZ
+    vertices.push_back(0.5f); // S
+    vertices.push_back(0.5f); // T
 
     for (int i = 0; i <= NUM_SEGMENTS; ++i) {
         float angle = 2.0f * M_PI * i / NUM_SEGMENTS;
@@ -88,7 +95,10 @@ void Dartboard::generateCircleVertices() {
 
         vertices.push_back(x);
         vertices.push_back(y);
-        vertices.push_back(depth); // Front Z
+        vertices.push_back(depth);
+        vertices.push_back(0.0f); // NX
+        vertices.push_back(0.0f); // NY
+        vertices.push_back(1.0f); // NZ
         vertices.push_back(s);
         vertices.push_back(t);
     }
@@ -120,6 +130,15 @@ void Dartboard::render(const glm::mat4& projection, const glm::mat4& view) {
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
+    // Set Phong lighting uniforms for the dartboard
+    glm::vec3 lightPos(0.0f, 0.0f, 2.0f); // Light above the board
+    glm::vec3 viewPos(0.0f, 0.0f, 2.0f);  // Camera position (adjust as needed)
+    glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
+
+    glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, glm::value_ptr(lightPos));
+    glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(viewPos));
+    glUniform3fv(glGetUniformLocation(shaderProgram, "lightColor"), 1, glm::value_ptr(lightColor));
+
     // Bind the texture
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -135,6 +154,7 @@ void Dartboard::render(const glm::mat4& projection, const glm::mat4& view) {
     // Render the hit markers after rendering the dartboard
     renderDarts(projection, view);
 }
+
 
 
 
