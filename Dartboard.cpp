@@ -450,29 +450,40 @@ void Dartboard::renderSingleDart(const glm::vec3& pos, const glm::vec3& dir, con
 void Dartboard::setupDartMesh() {
     // Parameters (increased for better visibility)
     const int segments = 16;
-    const float shaftLength = 0.12f;   // was 0.08f
-    const float shaftRadius = 0.01f;   // was 0.005f
-    const float tipLength = 0.03f;     // was 0.02f
-    const float tipRadius = 0.016f;    // was 0.008f
+    const float shaftLength = 0.12f;
+    const float shaftRadius = 0.01f;
+    const float tipLength = 0.03f;
+    const float tipRadius = 0.016f;
 
     dartMeshVertices.clear();
     dartMeshIndices.clear();
 
-    // Shaft (cylinder)
+    // Shaft (cylinder sides)
     for (int i = 0; i <= segments; ++i) {
         float theta = 2.0f * M_PI * i / segments;
         float x = cos(theta);
         float y = sin(theta);
 
+        // Normal for the side of the cylinder
+        float nx = x;
+        float ny = y;
+        float nz = 0.0f;
+
         // Bottom circle
         dartMeshVertices.push_back(shaftRadius * x);
         dartMeshVertices.push_back(shaftRadius * y);
         dartMeshVertices.push_back(0.0f);
+        dartMeshVertices.push_back(nx);
+        dartMeshVertices.push_back(ny);
+        dartMeshVertices.push_back(nz);
 
         // Top circle
         dartMeshVertices.push_back(shaftRadius * x);
         dartMeshVertices.push_back(shaftRadius * y);
         dartMeshVertices.push_back(-shaftLength);
+        dartMeshVertices.push_back(nx);
+        dartMeshVertices.push_back(ny);
+        dartMeshVertices.push_back(nz);
     }
 
     // Indices for shaft (cylinder sides)
@@ -487,8 +498,43 @@ void Dartboard::setupDartMesh() {
         dartMeshIndices.push_back(base + 2);
     }
 
-    // Tip (cone)
-    int tipBaseIndex = (segments + 1) * 2;
+    // --- Shaft End Cap (tail) ---
+    int tailCenterIndex = dartMeshVertices.size() / 6;
+    // Center vertex for tail cap
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(1.0f); // Normal points out
+
+    for (int i = 0; i < segments; ++i) {
+        int idx0 = i * 2;
+        int idx1 = ((i + 1) % segments) * 2;
+        dartMeshIndices.push_back(tailCenterIndex);
+        dartMeshIndices.push_back(idx1);
+        dartMeshIndices.push_back(idx0);
+    }
+
+    // --- Shaft End Cap (front, where tip starts) ---
+    int frontCenterIndex = dartMeshVertices.size() / 6;
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(-shaftLength);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(-1.0f); // Normal points in
+
+    for (int i = 0; i < segments; ++i) {
+        int idx0 = i * 2 + 1;
+        int idx1 = ((i + 1) % segments) * 2 + 1;
+        dartMeshIndices.push_back(frontCenterIndex);
+        dartMeshIndices.push_back(idx0);
+        dartMeshIndices.push_back(idx1);
+    }
+
+    // --- Tip (cone sides) ---
+    int tipBaseIndex = dartMeshVertices.size() / 6;
     for (int i = 0; i <= segments; ++i) {
         float theta = 2.0f * M_PI * i / segments;
         float x = cos(theta);
@@ -499,10 +545,21 @@ void Dartboard::setupDartMesh() {
         dartMeshVertices.push_back(tipRadius * y);
         dartMeshVertices.push_back(-shaftLength);
 
+        // Normal for cone side (approximate)
+        glm::vec3 sideNormal = glm::normalize(glm::vec3(x, y, tipRadius / tipLength));
+        dartMeshVertices.push_back(sideNormal.x);
+        dartMeshVertices.push_back(sideNormal.y);
+        dartMeshVertices.push_back(sideNormal.z);
+
         // Tip point
         dartMeshVertices.push_back(0.0f);
         dartMeshVertices.push_back(0.0f);
         dartMeshVertices.push_back(-shaftLength - tipLength);
+
+        // Normal for tip point (just point along cone axis)
+        dartMeshVertices.push_back(x);
+        dartMeshVertices.push_back(y);
+        dartMeshVertices.push_back(-tipLength / sqrt(x * x + y * y + tipLength * tipLength));
     }
 
     // Indices for tip (cone sides)
@@ -511,6 +568,23 @@ void Dartboard::setupDartMesh() {
         dartMeshIndices.push_back(base);
         dartMeshIndices.push_back(base + 1);
         dartMeshIndices.push_back(base + 2);
+    }
+
+    // --- Tip Base Cap (optional, for completeness) ---
+    int tipBaseCenterIndex = dartMeshVertices.size() / 6;
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(-shaftLength);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(0.0f);
+    dartMeshVertices.push_back(-1.0f); // Normal points in
+
+    for (int i = 0; i < segments; ++i) {
+        int idx0 = tipBaseIndex + i * 2;
+        int idx1 = tipBaseIndex + ((i + 1) % segments) * 2;
+        dartMeshIndices.push_back(tipBaseCenterIndex);
+        dartMeshIndices.push_back(idx0);
+        dartMeshIndices.push_back(idx1);
     }
 
     // OpenGL buffers
@@ -525,21 +599,37 @@ void Dartboard::setupDartMesh() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dartMeshEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, dartMeshIndices.size() * sizeof(unsigned int), dartMeshIndices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
 }
+
 
 
 void Dartboard::renderDartMesh(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection) {
     glUseProgram(dartShaderProgram);
     glBindVertexArray(dartMeshVAO);
 
+    // Set transformation matrices
     glUniformMatrix4fv(glGetUniformLocation(dartShaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
     glUniformMatrix4fv(glGetUniformLocation(dartShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(glGetUniformLocation(dartShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
+    // Set Phong lighting uniforms
+    glm::vec3 lightPos(0.0f, 0.0f, 2.0f); // Light above the board
+    glm::vec3 viewPos(0.0f, 0.0f, 2.0f);  // Camera position (match your camera)
+    glm::vec3 objectColor(0.8f, 0.2f, 0.2f); // Dart color (reddish)
+    glm::vec3 lightColor(1.0f, 1.0f, 1.0f);  // White light
+
+    glUniform3fv(glGetUniformLocation(dartShaderProgram, "lightPos"), 1, glm::value_ptr(lightPos));
+    glUniform3fv(glGetUniformLocation(dartShaderProgram, "viewPos"), 1, glm::value_ptr(viewPos));
+    glUniform3fv(glGetUniformLocation(dartShaderProgram, "objectColor"), 1, glm::value_ptr(objectColor));
+    glUniform3fv(glGetUniformLocation(dartShaderProgram, "lightColor"), 1, glm::value_ptr(lightColor));
+
+    // Draw the dart mesh
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(dartMeshIndices.size()), GL_UNSIGNED_INT, 0);
 
     glBindVertexArray(0);
