@@ -52,6 +52,8 @@ const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
 
 
 
+
+
 // Vertex Shader Source
 const char* vertexShaderSource = R"(
 #version 330 core
@@ -368,8 +370,10 @@ void processInput(GLFWwindow* window) {
         float normX = (mouseX / width) * 2.0f - 1.0f;  // X coordinate in NDC
         float normY = 1.0f - (mouseY / height) * 2.0f; // Y coordinate in NDC
 
-        // Apply random shaking effect to the crosshair
-        float shakeAmount = 0.02f;
+        // Make shaking more intense only when exactly zoomed in
+        const float ZOOMED_IN_LEVEL = 1.1f;
+        const float ZOOM_EPSILON = 0.01f;
+        float shakeAmount = (fabs(currentZoomLevel - ZOOMED_IN_LEVEL) < ZOOM_EPSILON) ? 0.06f : 0.02f;
         float shakeX = ((rand() % 1000 - 500) / 500.0f) * shakeAmount;
         float shakeY = ((rand() % 1000 - 500) / 500.0f) * shakeAmount;
 
