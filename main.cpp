@@ -17,6 +17,8 @@
 #include "TextRenderer.h"
 #include "Overlay.h" // Assuming you have an Overlay class
 
+
+
 void processInput(GLFWwindow* window);
 void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer, const glm::mat4& projection, const glm::mat4& view);
 void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& projection, const glm::mat4& view);
