@@ -17,6 +17,8 @@
 #include "TextRenderer.h"
 #include "Overlay.h" // Assuming you have an Overlay class
 
+
+
 void processInput(GLFWwindow* window);
 void updateGame(float deltaTime, GLFWwindow* window, Dartboard& dartboard, TextRenderer& textRenderer, const glm::mat4& projection, const glm::mat4& view);
 void processThrow(Player& currentPlayer, Dartboard& dartboard, const glm::mat4& projection, const glm::mat4& view);
@@ -49,6 +51,8 @@ float zoomSpeed = 0.1f; // Adjust the speed of zooming
 
 const float TARGET_FPS = 60.0f;
 const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
+
+
 
 
 
@@ -368,10 +372,12 @@ void processInput(GLFWwindow* window) {
         float normX = (mouseX / width) * 2.0f - 1.0f;  // X coordinate in NDC
         float normY = 1.0f - (mouseY / height) * 2.0f; // Y coordinate in NDC
 
-        // Apply random shaking effect to the crosshair
-        float shakeAmount = 0.02f;
-        float shakeX = 0;/*(rand() % 1000 - 500) / 500.0f * shakeAmount;*/
-        float shakeY = 0;/*(rand() % 1000 - 500) / 500.0f * shakeAmount;*/
+        // Make shaking more intense only when exactly zoomed in
+        const float ZOOMED_IN_LEVEL = 1.1f;
+        const float ZOOM_EPSILON = 0.01f;
+        float shakeAmount = (fabs(currentZoomLevel - ZOOMED_IN_LEVEL) < ZOOM_EPSILON) ? 0.06f : 0.02f;
+        float shakeX = ((rand() % 1000 - 500) / 500.0f) * shakeAmount;
+        float shakeY = ((rand() % 1000 - 500) / 500.0f) * shakeAmount;
 
         crosshair.setPosition(normX + shakeX, normY + shakeY);
     }
